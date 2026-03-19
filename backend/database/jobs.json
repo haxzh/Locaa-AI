@@ -1,0 +1,75 @@
+{
+  "2a58e482": {
+    "job_id": "2a58e482",
+    "video_id": "https://youtu.be/9uuRqcWFr7U?si=8NMwjS-wNiQKCRT2",
+    "youtube_url": "https://youtu.be/9uuRqcWFr7U?si=8NMwjS-wNiQKCRT2",
+    "status": "failed",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=8.8125, system=8.375, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "c51c1504": {
+    "job_id": "c51c1504",
+    "video_id": "https://youtu.be/9uuRqcWFr7U?si=8NMwjS-wNiQKCRT2",
+    "youtube_url": "https://youtu.be/9uuRqcWFr7U?si=8NMwjS-wNiQKCRT2",
+    "status": "failed",
+    "logo_path": "D:\\Project\\MyMain\\ai-clipper\\backend\\uploads\\logo_632f0f5814d64a6a855f6d9bf3b85035.png",
+    "clips": [],
+    "created_at": "nt.times_result(user=9.640625, system=10.953125, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "54121b57": {
+    "job_id": "54121b57",
+    "video_id": "9uuRqcWFr7U",
+    "youtube_url": "https://youtu.be/9uuRqcWFr7U?si=8NMwjS-wNiQKCRT2",
+    "status": "failed",
+    "logo_path": "D:\\Project\\MyMain\\ai-clipper\\backend\\uploads\\logo_632f0f5814d64a6a855f6d9bf3b85035.png",
+    "clips": [],
+    "created_at": "nt.times_result(user=7.625, system=5.390625, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "5bb577aa": {
+    "job_id": "5bb577aa",
+    "video_id": "tzCQfg0EmT4",
+    "youtube_url": "https://youtu.be/tzCQfg0EmT4?si=MAQFuF-C6JdtDVTf",
+    "status": "failed",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=5.796875, system=6.609375, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "d79010fb": {
+    "job_id": "d79010fb",
+    "video_id": "v1JzYjrt-x8",
+    "youtube_url": "https://youtu.be/v1JzYjrt-x8?si=-7zhiJGzc617b6TT",
+    "status": "failed",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=7.859375, system=6.921875, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "a28de4ad": {
+    "job_id": "a28de4ad",
+    "video_id": "v1JzYjrt-x8",
+    "youtube_url": "https://youtu.be/v1JzYjrt-x8?si=-7zhiJGzc617b6TT",
+    "status": "failed",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=7.0625, system=2.984375, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "b210cb4b": {
+    "job_id": "b210cb4b",
+    "video_id": "v1JzYjrt-x8",
+    "youtube_url": "https://youtu.be/v1JzYjrt-x8?si=Kni4zFrrJAHOMETZ",
+    "status": "failed",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=5.96875, system=5.890625, children_user=0.0, children_system=0.0, elapsed=0.0)"
+  },
+  "fced7512": {
+    "job_id": "fced7512",
+    "video_id": "v1JzYjrt-x8",
+    "youtube_url": "https://youtu.be/v1JzYjrt-x8?si=Kni4zFrrJAHOMETZ",
+    "status": "published",
+    "logo_path": null,
+    "clips": [],
+    "created_at": "nt.times_result(user=7.046875, system=2.625, children_user=0.0, children_system=0.0, elapsed=0.0)",
+    "youtube_id": "4QZNv9h6rR0"
+  }
+}

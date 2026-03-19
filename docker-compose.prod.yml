@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: locaa_ai
+      POSTGRES_USER: locaa_ai
+      POSTGRES_PASSWORD: change-this-postgres-password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U locaa_ai -d locaa_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - backend/.env.production
+    volumes:
+      - ./videos:/app/videos
+      - ./logs:/app/logs
+      - ./instance:/app/instance
+      - ./backend/uploads:/app/backend/uploads
+      - ./backend/credentials:/app/backend/credentials
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "5000"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: app.locaaai.com
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:

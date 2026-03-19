@@ -1,0 +1,63 @@
+# ==================== CORE FRAMEWORK ====================
+flask==3.0.3
+flask-cors==4.0.0
+python-dotenv==1.0.1
+requests==2.32.3
+
+# ==================== VIDEO PROCESSING ====================
+yt-dlp==2025.2.19
+moviepy==1.0.3
+opencv-python==4.10.0.84
+numpy==1.26.4
+# pillow==10.1.0
+
+# ==================== AI & ML ====================
+# Use CPU wheels for reliable production builds without massive CUDA downloads.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+torchaudio==2.2.2+cpu
+openai-whisper
+
+# ==================== GOOGLE APIs ====================
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.108.0
+
+# ==================== SAAS FEATURES ====================
+flask-sqlalchemy==3.1.1
+flask-jwt-extended==4.5.3
+bcrypt==4.1.2
+pydantic==2.5.3
+python-decouple==3.8
+psycopg2-binary==2.9.9
+
+# ==================== PAYMENT & EMAIL ====================
+stripe==7.8.0
+razorpay==1.4.1
+flask-mail==0.10.0
+
+# ==================== BACKGROUND TASKS ====================
+celery==5.3.4
+redis==5.0.1
+
+# ==================== AI DUBBING & TTS ====================
+edge-tts==6.1.12
+deep-translator==1.11.4
+gTTS==2.5.1
+replicate==0.30.0
+
+# ==================== UTILITIES ====================
+python-dateutil==2.8.2
+pytz==2023.3
+validators==0.22.0
+
+# ==================== SOCIAL MEDIA APIS ====================
+facebook-sdk==3.1.0
+# tiktok-api==0.1.1
+
+# ==================== OPTIONAL BUT RECOMMENDED ====================
+# gunicorn==21.2.0  # Production WSGI server
+# boto3==1.34.0  # AWS S3 for video storage
+# sentry-sdk[flask]==1.40.0  # Error tracking
+Pillow==10.3.0
+pydub==0.25.1

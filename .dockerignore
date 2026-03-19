@@ -1,0 +1,13 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/node_modules
+**/dist
+**/venv
+**/.venv
+.git
+.gitignore
+logs/*.log
+videos/temp/*
+frontend/server_output.log
+frontend/server_error.log
