@@ -21,4 +21,4 @@ RUN mkdir -p /app/videos/full_videos /app/videos/clips /app/videos/reels /app/vi
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "-b", "0.0.0.0:5000", "app:app", "--timeout", "1200"]
+CMD ["sh", "-c", "gunicorn -w 2 -k gthread -b 0.0.0.0:${PORT:-5000} app:app --timeout 1200"]
