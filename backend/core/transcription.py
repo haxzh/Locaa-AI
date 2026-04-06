@@ -18,7 +18,8 @@ def get_whisper_model():
 
 def transcribe_video(video_path):
     """
-    Extracts audio from video and transcribes it, returning segments with timestamps.
+    Extracts audio from video and transcribes it, returning segments with timestamps
+    and detected source language.
     """
     base = os.path.splitext(os.path.basename(video_path))[0]
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -40,5 +41,6 @@ def transcribe_video(video_path):
         no_speech_threshold=0.45,
         compression_ratio_threshold=2.2
     )
-    
-    return result.get("segments", []), audio_path
+
+    detected_language = (result.get("language") or "unknown").lower()
+    return result.get("segments", []), audio_path, detected_language

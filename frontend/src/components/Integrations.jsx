@@ -7,6 +7,7 @@ import {
   FaChartLine,
   FaCog,
   FaDropbox,
+  FaFacebookF,
   FaFolder,
   FaGoogleDrive,
   FaInstagram,
@@ -56,6 +57,19 @@ const PROVIDERS_META = {
       { key: 'app_id', label: 'App ID', placeholder: 'Instagram App ID' },
       { key: 'app_secret', label: 'App Secret', placeholder: 'Instagram App Secret', secret: true },
       { key: 'access_token', label: 'Access Token', placeholder: 'Long-lived access token', secret: true },
+    ],
+  },
+  facebook: {
+    name: 'Facebook',
+    icon: <FaFacebookF />,
+    color: '#1877f2',
+    bg: 'from-blue-500 to-blue-700',
+    helper: 'Connect your Facebook Page to auto-publish native videos.',
+    about: 'Expand your social reach beyond Reels. Connect your Facebook Page to publish long-form and short-form videos automatically from Locaa AI workflows.',
+    features: ['Direct Facebook Page publishing', 'Native feed video support', 'Cross-channel distribution'],
+    fields: [
+      { key: 'page_id', label: 'Page ID', placeholder: 'Facebook Page ID' },
+      { key: 'access_token', label: 'Page Access Token', placeholder: 'Facebook Page access token', secret: true },
     ],
   },
   tiktok: {
@@ -253,7 +267,7 @@ function Integrations() {
   }
 
   const cardProviders = useMemo(
-    () => ['youtube', 'instagram', 'tiktok', 'google_drive', 'dropbox', 'vimeo', 'slack', 'aws_s3'],
+    () => ['youtube', 'instagram', 'facebook', 'tiktok', 'google_drive', 'dropbox', 'vimeo', 'slack', 'aws_s3'],
     []
   )
 

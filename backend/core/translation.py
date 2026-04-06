@@ -86,7 +86,7 @@ def _translate_with_google(text: str, target_language: str):
     return " ".join(translated_chunks)
 
 
-def _translate_with_openai(text: str, target_language: str, context: str = ""):
+def _translate_with_openai(text: str, target_language: str, context: str = "", source_language: str = "unknown", segment_duration_s: float = 0.0):
     api_key = os.getenv('OPENAI_API_KEY', '')
     if not api_key or not OPENAI_AVAILABLE:
         return None
@@ -94,12 +94,29 @@ def _translate_with_openai(text: str, target_language: str, context: str = ""):
     target_label = LANGUAGE_LABELS.get(target_language.lower(), target_language.capitalize())
     client = OpenAI(api_key=api_key)
 
-    system_prompt = (
-        f"You are an expert dubbing translator. Translate the user's text to natural, publication-ready {target_label}. "
-        "Keep meaning exact, preserve names/brands/platform words, keep emotional tone, do not add extra text. "
-        "Output only translated text."
+    if target_language.lower() == 'hindi':
+        system_prompt = (
+            "You are an AI system that performs automatic video dubbing. "
+            "Your output must be Hindi dubbing text only. "
+            "Translate accurately while preserving meaning, intent, tone, and emotion. "
+            "Use simple, natural spoken Hindi. Avoid robotic phrasing. "
+            "Keep sentences short and timing-friendly for dubbing sync. "
+            "Do not add explanations, notes, labels, or extra content. "
+            "Preserve names, brands, and platform words exactly when appropriate."
+        )
+    else:
+        system_prompt = (
+            f"You are an expert dubbing translator. Translate the user's text to natural, publication-ready {target_label}. "
+            "Keep meaning exact, preserve names/brands/platform words, keep emotional tone, do not add extra text. "
+            "Keep phrasing concise for dubbing timing. "
+            "Output only translated text."
+        )
+    user_prompt = (
+        f"Detected source language: {source_language}\n"
+        f"Approx segment duration: {segment_duration_s:.2f} seconds\n"
+        f"Context: {context}\n\n"
+        f"Text: {text}"
     )
-    user_prompt = f"Context: {context}\n\nText: {text}"
 
     for _ in range(2):
         try:
@@ -140,7 +157,7 @@ def translate_text(text, target_language="hindi"):
         return text
 
 
-def translate_segments(segments: List[Dict], target_language: str = 'hindi'):
+def translate_segments(segments: List[Dict], target_language: str = 'hindi', source_language: str = 'unknown'):
     """Context-aware translation for a sequence of transcript segments."""
     translated = []
     history = []
@@ -157,7 +174,14 @@ def translate_segments(segments: List[Dict], target_language: str = 'hindi'):
         protected, token_map = _protect_terms(source_text)
 
         try:
-            candidate = _translate_with_openai(protected, target_language, context=context_text)
+            duration_s = max(0.0, float(seg.get('end', 0)) - float(seg.get('start', 0)))
+            candidate = _translate_with_openai(
+                protected,
+                target_language,
+                context=context_text,
+                source_language=source_language,
+                segment_duration_s=duration_s,
+            )
             if not candidate:
                 candidate = _translate_with_google(protected, target_language)
             final_text = _clean_translated_text(_restore_terms(candidate, token_map))

@@ -18,6 +18,10 @@ SUPPORTED_PROVIDERS = {
         'label': 'Instagram',
         'required_fields': ['app_id', 'app_secret', 'access_token'],
     },
+    'facebook': {
+        'label': 'Facebook',
+        'required_fields': ['page_id', 'access_token'],
+    },
     'tiktok': {
         'label': 'TikTok',
         'required_fields': ['client_key', 'client_secret', 'access_token'],

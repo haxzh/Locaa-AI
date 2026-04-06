@@ -13,6 +13,7 @@ import Integrations from './components/Integrations'
 import ProjectSettings from './components/ProjectSettings'
 import BrandingStudio from './components/BrandingStudio'
 import CreateJob from './components/CreateJob'
+import TeamCollaboration from './components/TeamCollaboration'
 import SupportDocs from './components/SupportDocs'
 import AIGenerator from './components/AIGenerator'
 import Analytics from './components/analytics'
@@ -42,6 +43,14 @@ const AnimatedRoutes = () => {
           element={
             <ProtectedRoute>
               <CreateJob />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/team-collaboration"
+          element={
+            <ProtectedRoute>
+              <TeamCollaboration />
             </ProtectedRoute>
           }
         />

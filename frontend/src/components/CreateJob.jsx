@@ -6,7 +6,7 @@ import {
     FaVideo, FaUpload, FaYoutube, FaMagic,
     FaArrowRight, FaArrowLeft, FaUndo,
     FaCheck, FaLanguage, FaSpinner, FaPlay,
-    FaImage
+    FaImage, FaCloudUploadAlt
 } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 import '../index.css'
@@ -471,7 +471,7 @@ function CreateJob() {
 
                                     <div className="mt-8 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex gap-4">
                                         <div className="text-blue-400 mt-1"><FaUndo /></div>
-                                        <p className="text-sm text-blue-200">If no logo is selected, we'll use your default workspace settings from the Branding Studio. Or none if disabled.</p>
+                                        <p className="text-sm text-blue-200">If no logo is selected, we will use your default workspace settings from the Branding Studio, or none if disabled.</p>
                                     </div>
                                 </div>
                             </motion.div>

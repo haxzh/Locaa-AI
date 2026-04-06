@@ -10,16 +10,20 @@ branding_bp = Blueprint('branding', __name__, url_prefix='/api/branding-config')
 ALLOWED_PROJECT_TYPES = {'clips', 'full_video'}
 
 DEFAULT_CONFIG = {
-    'aspect_ratio': '16:9',
-    'summary_length': 'Short/Detailed',
+    'aspect_ratio': '9:16',
+    'summary_length': 'Short',
     'text_overlay_font': 'Font',
-    'text_style_primary': 'Modern/Classic',
+    'text_style_primary': 'Modern',
     'text_style_secondary': 'Modern/Classic/Glow',
     'transition_style': 'Fade/Zoom/Slide',
     'logo_placement': 'Top-Left',
     'logo_opacity': 70,
     'ai_clip_sensitivity': 80,
     'noise_reduction': True,
+    'global_watermark': True,
+    'watermark_text': 'Locaa AI',
+    'watermark_position': 'bottom-right',
+    'watermark_opacity': 0.6,
     'logo_path': '',
     'brand_label': 'Locaa AI',
 }

@@ -200,6 +200,47 @@ def send_otp_email(email, otp_code):
         return False
 
 
+def send_team_invite_email(invite_email, inviter_name, invite_link, role='editor'):
+    """Send team collaboration invite email with direct join link."""
+    try:
+        role_label = (role or 'editor').capitalize()
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; background: #f5f7fb; padding: 20px;">
+                <div style="max-width: 620px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e6e9f2;">
+                    <div style="padding: 24px; background: linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%); color: white;">
+                        <h2 style="margin: 0;">You Are Invited To Locaa AI Team</h2>
+                        <p style="margin: 10px 0 0 0; opacity: 0.92;">{inviter_name} invited you as {role_label}</p>
+                    </div>
+                    <div style="padding: 24px;">
+                        <p style="margin-top: 0;">Click below to accept the invite and join the workspace:</p>
+                        <p>
+                            <a href="{invite_link}" style="background-color: #0f766e; color: #fff; padding: 12px 26px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
+                                Accept Invitation
+                            </a>
+                        </p>
+                        <p style="font-size: 13px; color: #64748b;">If button does not work, copy this link:</p>
+                        <p style="word-break: break-all; font-size: 13px;"><a href="{invite_link}">{invite_link}</a></p>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">This invite link expires in 7 days.</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+        """
+
+        msg = Message(
+            subject='You have been invited to Locaa AI workspace',
+            recipients=[invite_email],
+            html=html_body
+        )
+        mail.send(msg)
+        log(f"Team invite email sent to {invite_email}")
+        return True
+    except Exception as e:
+        log(f"Failed to send team invite email: {str(e)}", level='error')
+        return False
+
+
 def send_subscription_receipt_email(user, payment, frontend_url="http://localhost:5173"):
     """Send subscription payment receipt email"""
     try:

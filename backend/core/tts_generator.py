@@ -5,6 +5,7 @@ Supports OpenAI TTS (premium) and Edge TTS (fallback)
 import os
 import asyncio
 import random
+import hashlib
 import edge_tts
 from pathlib import Path
 from typing import Optional
@@ -98,11 +99,14 @@ class OpenAITTSGenerator:
         try:
             # Select voice
             if voice is None:
-                if voice_profile:
-                    voice = voice_profile
+                resolved_gender, profile_seed = _parse_voice_profile(voice_profile, fallback_gender=gender)
+                gender_map = self.OPENAI_GENDER_VOICES.get(resolved_gender, self.OPENAI_GENDER_VOICES['neutral'])
+                lang_key = (language or 'english').lower()
+                candidate_voice = gender_map.get(lang_key, gender_map.get('default', 'alloy'))
+                if isinstance(candidate_voice, list):
+                    voice = _stable_pick(candidate_voice, profile_seed)
                 else:
-                    gender_map = self.OPENAI_GENDER_VOICES.get(gender, self.OPENAI_GENDER_VOICES['neutral'])
-                    voice = gender_map.get(language.lower(), gender_map.get('default', 'alloy'))
+                    voice = candidate_voice
             
             log(f"Generating OpenAI TTS: {text[:50]}... [voice: {voice}, speed: {speed}]")
             
@@ -216,15 +220,49 @@ EDGE_VOICE_MAP = {
 }
 
 
+def _parse_voice_profile(voice_profile: Optional[str], fallback_gender: str = 'neutral'):
+    """Parse speaker metadata profile in format speaker_id::gender::seed."""
+    gender = (fallback_gender or 'neutral').lower()
+    profile_seed = None
+
+    if not voice_profile:
+        return gender, profile_seed
+
+    parts = str(voice_profile).split('::')
+    if len(parts) >= 2 and parts[1].lower() in ('male', 'female', 'neutral'):
+        gender = parts[1].lower()
+
+    if len(parts) >= 3:
+        try:
+            profile_seed = int(parts[2])
+        except Exception:
+            profile_seed = None
+
+    if profile_seed is None:
+        digest = hashlib.sha256(str(voice_profile).encode('utf-8')).hexdigest()
+        profile_seed = int(digest[:8], 16)
+
+    return gender, profile_seed
+
+
+def _stable_pick(candidates, profile_seed):
+    if not candidates:
+        return None
+    if profile_seed is None:
+        return random.choice(candidates)
+    return candidates[profile_seed % len(candidates)]
+
+
 def _resolve_edge_voice(target_language: str, gender: str = 'neutral', voice_profile: Optional[str] = None) -> str:
-    if voice_profile:
+    # Accept explicit Edge voice IDs directly if provided.
+    if voice_profile and isinstance(voice_profile, str) and '::' not in voice_profile and 'Neural' in voice_profile:
         return voice_profile
 
     lang = (target_language or 'english').lower()
-    gender = (gender or 'neutral').lower()
+    gender, profile_seed = _parse_voice_profile(voice_profile, fallback_gender=gender)
     voice_config = EDGE_VOICE_MAP.get(lang, EDGE_VOICE_MAP.get('english'))
     candidates = voice_config.get(gender) or voice_config.get('neutral') or ['en-US-JennyNeural']
-    return random.choice(candidates)
+    return _stable_pick(candidates, profile_seed) or 'en-US-JennyNeural'
 
 
 def _clamp(value, min_v, max_v):

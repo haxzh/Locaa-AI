@@ -297,9 +297,9 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FaCheck, FaTimes, FaSpinner, FaRocket, FaStar, FaShieldAlt, FaQuestionCircle } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaSpinner, FaRocket, FaStar, FaShieldAlt, FaQuestionCircle, FaArrowRight, FaBolt } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PricingPlans = () => {
@@ -325,6 +325,7 @@ const PricingPlans = () => {
         { title: 'Does billing support teams?', text: 'Business plans are designed for startup teams, agencies and founder-led marketing operations.' },
         { title: 'What happens after payment?', text: 'Your subscription activates immediately and your dashboard unlocks higher limits and premium features.' }
     ];
+    const billingCycles = ['monthly', 'quarterly', 'yearly'];
 
     // Billing data for INR pricing
     const getBillingPrice = (plan) => {
@@ -480,6 +481,15 @@ const PricingPlans = () => {
         };
     }, []);
 
+    const topPlan = useMemo(() => {
+        if (!plans.length) return null;
+        return plans.reduce((best, current) => {
+            const currentVideos = Number(current.videos_per_month) || 0;
+            const bestVideos = Number(best?.videos_per_month) || 0;
+            return currentVideos > bestVideos ? current : best;
+        }, plans[0]);
+    }, [plans]);
+
     if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0c]">
             <FaSpinner className="animate-spin text-5xl text-blue-500 mb-4" />
@@ -543,9 +553,20 @@ const PricingPlans = () => {
                         ))}
                     </motion.div>
 
+                    <motion.div
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="mt-8 flex flex-wrap items-center justify-center gap-3"
+                    >
+                        <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300">For creators & agencies</span>
+                        <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-300">Scale from 5 to 100 videos/month</span>
+                        <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">Instant plan activation</span>
+                    </motion.div>
+
                     {/* Billing Switcher */}
                     <div className="mt-12 inline-flex p-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl relative">
-                        {['monthly', 'quarterly', 'yearly'].map((cycle) => {
+                        {billingCycles.map((cycle) => {
                             const samplePlan = plans[1] || plans[0]; // Use middle/pro plan for display
                             const billingData = getBillingPrice(samplePlan);
                             const cycleData = billingData[cycle];
@@ -555,6 +576,13 @@ const PricingPlans = () => {
                                     onClick={() => setBillingCycle(cycle)}
                                     className={`relative z-10 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${billingCycle === cycle ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
                                 >
+                                    {billingCycle === cycle && (
+                                        <motion.span
+                                            layoutId="activeBilling"
+                                            className="absolute inset-0 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20 -z-10"
+                                            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                                        />
+                                    )}
                                     {cycle.charAt(0).toUpperCase() + cycle.slice(1)}
                                     {cycleData.savings && (
                                         <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-md">
@@ -564,16 +592,6 @@ const PricingPlans = () => {
                                 </button>
                             );
                         })}
-                        {/* Animated background slider */}
-                        <motion.div 
-                            className="absolute inset-y-1.5 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"
-                            initial={false}
-                            animate={{ 
-                                x: billingCycle === 'monthly' ? 6 : billingCycle === 'quarterly' ? 108 : 225,
-                                width: billingCycle === 'monthly' ? 95 : billingCycle === 'quarterly' ? 110 : 90 
-                            }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        />
                     </div>
                 </div>
 
@@ -611,6 +629,10 @@ const PricingPlans = () => {
                                 <div className="mb-8">
                                     <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                                     <p className="text-gray-400 text-sm leading-relaxed">{plan.description}</p>
+                                    <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium text-gray-300">
+                                        <FaBolt className="mr-1.5 text-blue-400" />
+                                        Best for {plan.videos_per_month <= 10 ? 'new creators' : plan.videos_per_month <= 40 ? 'growing creators' : 'teams & agencies'}
+                                    </div>
                                     {currentPrice.savings && (
                                         <div className="mt-4 inline-flex rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-green-400">
                                             {currentPrice.savings}
@@ -651,8 +673,10 @@ const PricingPlans = () => {
                                         : 'bg-white/10 hover:bg-white/20 text-white'
                                     }`}
                                 >
-                                    {processingPlan === plan.id ? <FaSpinner className="animate-spin" /> : <><FaRocket className="text-sm" /> Get Started</>}
+                                    {processingPlan === plan.id ? <FaSpinner className="animate-spin" /> : <><FaRocket className="text-sm" /> Start {plan.name}</>}
                                 </button>
+
+                                <p className="mt-3 text-center text-[11px] text-gray-500">Taxes may apply based on your region.</p>
                             </motion.div>
                         );
                     })}
@@ -696,6 +720,32 @@ const PricingPlans = () => {
                         </div>
                     </div>
                 </div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.5 }}
+                    className="mt-16 rounded-[2rem] border border-blue-400/20 bg-gradient-to-r from-blue-600/15 via-cyan-600/10 to-transparent p-8 md:p-10"
+                >
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300 mb-3">Launch Offer</p>
+                            <h3 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-2">Scale your content ops this week.</h3>
+                            <p className="text-gray-300 max-w-2xl">Pick your plan and unlock faster clipping, dubbing, and publishing workflows right away. No waiting period, no manual activation delays.</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const proPlan = plans.find((p) => p.id === 'pro') || topPlan || plans[0];
+                                if (proPlan) handleSubscribe(proPlan.id);
+                            }}
+                            disabled={!plans.length || processingPlan !== null}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-[#0b1020] font-bold px-6 py-3.5 hover:bg-blue-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {processingPlan ? 'Processing...' : 'Checkout Recommended Plan'} <FaArrowRight />
+                        </button>
+                    </div>
+                </motion.div>
             </div>
         </div>
     );

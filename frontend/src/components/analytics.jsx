@@ -45,6 +45,16 @@ const Analytics = () => {
     const [platforms, setPlatforms] = useState([]);
     const [chartData, setChartData] = useState([]);
 
+    const displayName = [user?.first_name, user?.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || user?.name || user?.username || 'Creator';
+
+    const tierRaw = (user?.subscription_tier || 'free').toString().trim();
+    const tierLabel = tierRaw
+        ? tierRaw.charAt(0).toUpperCase() + tierRaw.slice(1).toLowerCase()
+        : 'Free';
+
     useEffect(() => {
         let isMounted = true;
         const fetchAnalytics = async () => {
@@ -173,8 +183,8 @@ const Analytics = () => {
                                 <img src={`https://ui-avatars.com/api/?name=${user?.first_name || 'U'}&background=random`} alt="User" className="w-full h-full rounded-full border-2 border-[#0f0f13]" />
                             </div>
                             <div className="flex flex-col text-left">
-                                <span className="text-sm font-semibold text-white leading-tight">{user?.first_name || 'Creator'}</span>
-                                <span className="text-xs text-blue-400 flex items-center gap-1"><FaCrown className="text-[10px]" /> {user?.subscription_tier || 'Pro'}</span>
+                                <span className="text-sm font-semibold text-white leading-tight">{displayName}</span>
+                                <span className="text-xs text-blue-400 flex items-center gap-1"><FaCrown className="text-[10px]" /> {tierLabel}</span>
                             </div>
                         </div>
                         <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors p-2 hover:bg-red-500/10 rounded-lg">

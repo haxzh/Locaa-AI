@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { FaBell, FaChartLine, FaFolder, FaKey, FaQuestionCircle, FaSearch, FaSignOutAlt, FaUpload, FaCog, FaDownload, FaVideo, FaCut, FaLanguage, FaMicrophone, FaImage, FaYoutube, FaGlobe, FaSpinner } from 'react-icons/fa'
+import { FaBell, FaChartLine, FaFolder, FaKey, FaQuestionCircle, FaSearch, FaSignOutAlt, FaUpload, FaCog, FaDownload, FaVideo, FaCut, FaLanguage, FaMicrophone, FaImage, FaYoutube, FaGlobe, FaSpinner, FaInstagram, FaFacebookF, FaMusic } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 import '../styles/DashboardNew.css'
 
@@ -10,6 +10,12 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 function ProjectSettings() {
   const navigate = useNavigate()
   const { user, logout, token } = useAuth()
+  const displayName = [user?.first_name, user?.last_name]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || user?.name || user?.username || user?.email?.split('@')[0] || 'User'
+  const tierRaw = (user?.subscription_tier || 'free').toString().trim().toLowerCase()
+  const tierLabel = tierRaw ? `${tierRaw.charAt(0).toUpperCase()}${tierRaw.slice(1)} Plan` : 'Free Plan'
   const [watermarkEnabled, setWatermarkEnabled] = useState(true)
   const [videoType, setVideoType] = useState('full') // 'full' or 'clip'
   const [publishPlatform, setPublishPlatform] = useState('youtube') // 'youtube', 'other', 'all'
@@ -21,10 +27,20 @@ function ProjectSettings() {
   const [jobs, setJobs] = useState([])
   const [downloadingItems, setDownloadingItems] = useState({})
   const [message, setMessage] = useState(null)
+  const [aspectRatio, setAspectRatio] = useState('9:16')
+  const [overlayStyle, setOverlayStyle] = useState('Modern')
+  const [summaryLimit, setSummaryLimit] = useState('short')
+  const [savingPreferences, setSavingPreferences] = useState(false)
+  const [brandLogoPath, setBrandLogoPath] = useState('')
+  const [brandLogoName, setBrandLogoName] = useState('')
+  const [uploadingBrandLogo, setUploadingBrandLogo] = useState(false)
 
   // Publish Modal State
   const [publishModalJob, setPublishModalJob] = useState(null)
   const [publishMetadata, setPublishMetadata] = useState({ title: '', description: '', tags: '' })
+  const [selectedPublishPlatforms, setSelectedPublishPlatforms] = useState([])
+  const [availablePublishPlatforms, setAvailablePublishPlatforms] = useState([])
+  const [loadingPublishPlatforms, setLoadingPublishPlatforms] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [generatingAI, setGeneratingAI] = useState(false)
 
@@ -52,6 +68,127 @@ function ProjectSettings() {
     }, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const accessToken = token || localStorage.getItem('access_token')
+        if (!accessToken) return
+
+        const projectType = videoType === 'full' ? 'full_video' : 'clips'
+        const response = await axios.get(`${API_BASE}/api/branding-config`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params: { project_type: projectType }
+        })
+
+        const cfg = response?.data?.config || {}
+        setAspectRatio(cfg.aspect_ratio || '9:16')
+        setOverlayStyle(cfg.text_style_primary || 'Modern')
+
+        const rawSummary = String(cfg.summary_length || 'short').toLowerCase()
+        if (rawSummary.includes('detail') || rawSummary.includes('long')) setSummaryLimit('detailed')
+        else if (rawSummary.includes('medium') || rawSummary.includes('standard')) setSummaryLimit('medium')
+        else setSummaryLimit('short')
+
+        if (typeof cfg.global_watermark === 'boolean') {
+          setWatermarkEnabled(cfg.global_watermark)
+        } else {
+          setWatermarkEnabled(Boolean((cfg.watermark_text || '').trim()))
+        }
+
+        const savedLogoPath = cfg.logo_path || ''
+        setBrandLogoPath(savedLogoPath)
+        if (savedLogoPath) {
+          const parts = savedLogoPath.split(/[/\\]/)
+          setBrandLogoName(parts[parts.length - 1] || 'logo')
+        } else {
+          setBrandLogoName('')
+        }
+      } catch (error) {
+        console.error('Failed to load editing preferences:', error)
+      }
+    }
+
+    loadPreferences()
+  }, [videoType, token])
+
+  const buildBrandingOverrides = () => {
+    const summaryMap = {
+      short: 'Short',
+      medium: 'Medium',
+      detailed: 'Detailed'
+    }
+
+    return {
+      aspect_ratio: aspectRatio,
+      text_style_primary: overlayStyle,
+      summary_length: summaryMap[summaryLimit] || 'Short',
+      global_watermark: watermarkEnabled,
+      watermark_text: watermarkEnabled ? 'Locaa AI' : '',
+      watermark_position: 'bottom-right',
+      logo_path: brandLogoPath || ''
+    }
+  }
+
+  const handleBrandLogoUpload = async (file) => {
+    if (!file) return
+    const isAllowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'].includes(file.type)
+    if (!isAllowed) {
+      setMessage({ type: 'error', text: 'Only PNG, JPG, JPEG, GIF, WEBP logos are allowed.' })
+      setTimeout(() => setMessage(null), 4000)
+      return
+    }
+
+    try {
+      setUploadingBrandLogo(true)
+      const accessToken = token || localStorage.getItem('access_token')
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await axios.post(`${API_BASE}/api/upload-logo`, formData, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+
+      const logoPath = response?.data?.logo_path || ''
+      const logoFilename = response?.data?.filename || file.name
+      setBrandLogoPath(logoPath)
+      setBrandLogoName(logoFilename)
+      setMessage({ type: 'success', text: 'Logo uploaded successfully. Click Save Preferences to persist.' })
+      setTimeout(() => setMessage(null), 3500)
+    } catch (error) {
+      setMessage({ type: 'error', text: error?.response?.data?.error || 'Logo upload failed.' })
+      setTimeout(() => setMessage(null), 5000)
+    } finally {
+      setUploadingBrandLogo(false)
+    }
+  }
+
+  const handleSavePreferences = async () => {
+    try {
+      setSavingPreferences(true)
+      const accessToken = token || localStorage.getItem('access_token')
+      const projectType = videoType === 'full' ? 'full_video' : 'clips'
+
+      await axios.put(
+        `${API_BASE}/api/branding-config`,
+        {
+          project_type: projectType,
+          config: buildBrandingOverrides()
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+
+      setMessage({ type: 'success', text: `Preferences saved for ${projectType}.` })
+      setTimeout(() => setMessage(null), 3000)
+    } catch (error) {
+      setMessage({ type: 'error', text: error?.response?.data?.error || 'Failed to save preferences.' })
+      setTimeout(() => setMessage(null), 5000)
+    } finally {
+      setSavingPreferences(false)
+    }
+  }
 
   const handleDownloadAll = async (jobId) => {
     const downloadId = `${jobId}-all`
@@ -104,12 +241,18 @@ function ProjectSettings() {
 
   const handlePublishSubmit = async () => {
     if (!publishModalJob) return;
+    if (!selectedPublishPlatforms.length) {
+      setMessage({ type: 'error', text: 'Please select at least one platform.' });
+      setTimeout(() => setMessage(null), 4000);
+      return;
+    }
+
     setPublishing(true);
     try {
       const accessToken = token || localStorage.getItem('access_token');
 
       const payload = {
-        platforms: publishPlatform === 'all' ? ['youtube', 'instagram', 'facebook'] : [publishPlatform],
+        platforms: selectedPublishPlatforms,
         metadata: {
           title: publishMetadata.title,
           description: publishMetadata.description,
@@ -129,7 +272,19 @@ function ProjectSettings() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to publish');
 
-      setMessage({ type: 'success', text: 'Video published successfully to selected platforms!' });
+      const resultObj = data?.results || {};
+      const resultList = Array.isArray(resultObj)
+        ? resultObj.flatMap(item => Object.entries(item.results || {}))
+        : Object.entries(resultObj);
+      const okCount = resultList.filter(([, value]) => value?.success).length;
+      const failCount = resultList.length - okCount;
+
+      setMessage({
+        type: failCount > 0 ? 'error' : 'success',
+        text: failCount > 0
+          ? `Published on ${okCount} platform(s), failed on ${failCount}.`
+          : 'Video published successfully to selected platforms!'
+      });
       setPublishModalJob(null);
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -150,7 +305,13 @@ function ProjectSettings() {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ topic: publishModalJob.title || 'startup viral clip' })
+        body: JSON.stringify({
+          topic: publishModalJob.title || publishModalJob.description || 'startup viral clip',
+          job_id: publishModalJob.id,
+          current_title: publishModalJob.title || '',
+          current_description: publishModalJob.description || '',
+          target_platforms: selectedPublishPlatforms
+        })
       });
       const data = await response.json();
       if (data.metadata) {
@@ -165,6 +326,72 @@ function ProjectSettings() {
     } finally {
       setGeneratingAI(false);
     }
+  };
+
+  useEffect(() => {
+    if (!publishModalJob) return;
+
+    const fetchPlatforms = async () => {
+      setLoadingPublishPlatforms(true);
+      try {
+        const accessToken = token || localStorage.getItem('access_token');
+        const response = await axios.get(`${API_BASE}/api/publish/platforms`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        const platforms = response?.data?.platforms || [];
+        const sanitized = platforms.map((platform) => ({
+          ...platform,
+          selectable: Boolean(platform.available_in_plan && platform.enabled)
+        }));
+
+        setAvailablePublishPlatforms(sanitized);
+
+        const defaultSelected = sanitized
+          .filter((platform) => platform.selectable)
+          .slice(0, 1)
+          .map((platform) => platform.id);
+        setSelectedPublishPlatforms(defaultSelected);
+
+        setPublishMetadata({
+          title: publishModalJob.title || '',
+          description: publishModalJob.description || '',
+          tags: 'ai, clips, viral'
+        });
+      } catch (error) {
+        setAvailablePublishPlatforms([]);
+        setSelectedPublishPlatforms([]);
+        setMessage({ type: 'error', text: error?.response?.data?.error || 'Failed to load publishing platforms.' });
+        setTimeout(() => setMessage(null), 5000);
+      } finally {
+        setLoadingPublishPlatforms(false);
+      }
+    };
+
+    fetchPlatforms();
+  }, [publishModalJob, token]);
+
+  const platformIcon = (platformId) => {
+    if (platformId === 'youtube') return <FaYoutube className="text-2xl mb-2" />;
+    if (platformId === 'instagram') return <FaInstagram className="text-2xl mb-2" />;
+    if (platformId === 'facebook') return <FaFacebookF className="text-2xl mb-2" />;
+    if (platformId === 'tiktok') return <FaMusic className="text-2xl mb-2" />;
+    return <FaGlobe className="text-2xl mb-2" />;
+  };
+
+  const togglePlatformSelection = (platformId) => {
+    setSelectedPublishPlatforms((prev) => (
+      prev.includes(platformId)
+        ? prev.filter((id) => id !== platformId)
+        : [...prev, platformId]
+    ));
+  };
+
+  const selectAllAvailablePlatforms = () => {
+    const selectable = availablePublishPlatforms
+      .filter((platform) => platform.selectable)
+      .map((platform) => platform.id);
+    setSelectedPublishPlatforms(selectable);
   };
 
   const sidePrimaryItems = [
@@ -290,11 +517,11 @@ function ProjectSettings() {
             </button>
             <div className="flex items-center gap-3 bg-dark-800/50 border border-white/10 rounded-xl px-3 py-2 cursor-pointer hover:border-primary-500/30 transition-colors">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                {user?.username?.[0]?.toUpperCase() || 'A'}
+                {displayName?.[0]?.toUpperCase() || 'A'}
               </div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-white leading-tight">{user?.username || 'Amit Mishra'}</p>
-                <p className="text-xs text-dark-400">Free Plan</p>
+                <p className="text-sm font-semibold text-white leading-tight">{displayName}</p>
+                <p className="text-xs text-dark-400">{tierLabel}</p>
               </div>
             </div>
             <button
@@ -447,7 +674,13 @@ function ProjectSettings() {
                       else formData.append('youtube_url', youtubeUrl);
 
                       formData.append('processing_type', videoType === 'full' ? 'full_video' : 'clips');
-                      formData.append('target_language', targetLanguage);
+                      if (videoType === 'full') {
+                        formData.append('target_language', targetLanguage);
+                      }
+                      formData.append('branding_overrides', JSON.stringify(buildBrandingOverrides()));
+                      if (brandLogoPath) {
+                        formData.append('logo_path', brandLogoPath);
+                      }
 
                       const platforms = publishPlatform === 'all' ? ['youtube', 'other'] : [publishPlatform];
                       formData.append('publish_platforms', JSON.stringify(platforms));
@@ -556,12 +789,23 @@ function ProjectSettings() {
                 {/* Logo Upload */}
                 <div>
                   <h3 className="text-sm font-semibold text-dark-300 mb-3 uppercase tracking-wider">Default Brand Logo</h3>
-                  <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center hover:border-accent-2/40 transition-colors bg-dark-900/40 cursor-pointer flex flex-col items-center justify-center gap-3 h-32">
-                    <FaUpload className="text-2xl text-dark-400" />
-                    <div>
-                      <p className="text-white font-medium text-sm">Drag and Drop</p>
-                      <span className="text-dark-500 text-xs">Upload custom brand logo</span>
-                    </div>
+                  <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center hover:border-accent-2/40 transition-colors bg-dark-900/40 flex flex-col items-center justify-center gap-3 min-h-[128px]">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                      id="brand-logo-upload"
+                      className="hidden"
+                      onChange={(e) => handleBrandLogoUpload(e.target.files?.[0])}
+                    />
+                    <label htmlFor="brand-logo-upload" className="cursor-pointer flex flex-col items-center gap-3 w-full">
+                      <FaUpload className="text-2xl text-dark-400" />
+                      <div>
+                        <p className="text-white font-medium text-sm">{uploadingBrandLogo ? 'Uploading...' : 'Click to Upload Logo'}</p>
+                        <span className="text-dark-500 text-xs">
+                          {brandLogoName ? `Selected: ${brandLogoName}` : 'PNG, JPG, GIF, WEBP supported'}
+                        </span>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
@@ -570,18 +814,26 @@ function ProjectSettings() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2">Aspect Ratio</label>
-                      <select className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors">
-                        <option>9:16 (Reels/Shorts)</option>
-                        <option>16:9 (Standard)</option>
-                        <option>1:1 (Square)</option>
+                      <select
+                        className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors"
+                        value={aspectRatio}
+                        onChange={(e) => setAspectRatio(e.target.value)}
+                      >
+                        <option value="9:16">9:16 (Reels/Shorts)</option>
+                        <option value="16:9">16:9 (Standard)</option>
+                        <option value="1:1">1:1 (Square)</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2">Overlay Style</label>
-                      <select className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors">
-                        <option>Modern</option>
-                        <option>Classic Bold</option>
-                        <option>Minimalist</option>
+                      <select
+                        className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors"
+                        value={overlayStyle}
+                        onChange={(e) => setOverlayStyle(e.target.value)}
+                      >
+                        <option value="Modern">Modern</option>
+                        <option value="Classic Bold">Classic Bold</option>
+                        <option value="Minimalist">Minimalist</option>
                       </select>
                     </div>
                   </div>
@@ -589,10 +841,14 @@ function ProjectSettings() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2">AI Summary Limit</label>
-                      <select className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors">
-                        <option>Short (Quick Hits)</option>
-                        <option>Medium (Standard)</option>
-                        <option>Detailed (Long)</option>
+                      <select
+                        className="w-full bg-dark-900/80 border border-white/5 outline-none text-white text-sm p-3 rounded-lg focus:border-accent/50 transition-colors"
+                        value={summaryLimit}
+                        onChange={(e) => setSummaryLimit(e.target.value)}
+                      >
+                        <option value="short">Short (Quick Hits)</option>
+                        <option value="medium">Medium (Standard)</option>
+                        <option value="detailed">Detailed (Long)</option>
                       </select>
                     </div>
 
@@ -614,7 +870,14 @@ function ProjectSettings() {
               </div>
 
               <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
-                <button className="gradient-btn-primary px-8 py-3 text-sm" type="button">Save Preferences</button>
+                <button
+                  className="gradient-btn-primary px-8 py-3 text-sm"
+                  type="button"
+                  onClick={handleSavePreferences}
+                  disabled={savingPreferences}
+                >
+                  {savingPreferences ? 'Saving...' : 'Save Preferences'}
+                </button>
               </div>
             </div>
 
@@ -650,32 +913,49 @@ function ProjectSettings() {
 
               <div className="space-y-3">
                 <p className="text-sm text-dark-300 font-medium">Select Platforms</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPublishPlatform('youtube')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${publishPlatform === 'youtube' ? 'bg-red-500/10 border-red-500 text-red-400' : 'bg-dark-900 border-white/5 text-dark-400 hover:border-white/20'}`}
-                  >
-                    <FaYoutube className="text-2xl mb-2" />
-                    <span className="text-xs font-medium">YouTube</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPublishPlatform('instagram')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${publishPlatform === 'instagram' ? 'bg-pink-500/10 border-pink-500 text-pink-400' : 'bg-dark-900 border-white/5 text-dark-400 hover:border-white/20'}`}
-                  >
-                    <FaGlobe className="text-2xl mb-2" />
-                    <span className="text-xs font-medium">Instagram</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPublishPlatform('all')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${publishPlatform === 'all' ? 'bg-primary-500/10 border-primary-500 text-primary-400' : 'bg-dark-900 border-white/5 text-dark-400 hover:border-white/20'}`}
-                  >
-                    <FaGlobe className="text-2xl mb-2" />
-                    <span className="text-xs font-medium">All Linked</span>
-                  </button>
-                </div>
+                {loadingPublishPlatforms ? (
+                  <div className="bg-dark-900 border border-white/10 rounded-xl px-4 py-6 text-center text-dark-300 text-sm flex items-center justify-center gap-2">
+                    <FaSpinner className="animate-spin" /> Loading platforms...
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {availablePublishPlatforms.map((platform) => {
+                        const selected = selectedPublishPlatforms.includes(platform.id);
+                        const disabled = !platform.selectable;
+                        return (
+                          <button
+                            key={platform.id}
+                            type="button"
+                            onClick={() => !disabled && togglePlatformSelection(platform.id)}
+                            disabled={disabled}
+                            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${selected
+                              ? 'bg-primary-500/10 border-primary-500 text-primary-300'
+                              : 'bg-dark-900 border-white/5 text-dark-300'} ${disabled
+                                ? 'opacity-40 cursor-not-allowed'
+                                : 'hover:border-white/20 hover:text-white'}`}
+                            title={disabled ? (!platform.available_in_plan ? 'Upgrade plan required' : 'Connect integration first') : `Publish to ${platform.name}`}
+                          >
+                            {platformIcon(platform.id)}
+                            <span className="text-xs font-medium">{platform.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <button
+                        type="button"
+                        onClick={selectAllAvailablePlatforms}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-dark-200 hover:text-white hover:border-white/20 transition-colors"
+                      >
+                        Select All Linked
+                      </button>
+                      <span className="text-xs text-dark-400">
+                        Selected: {selectedPublishPlatforms.length}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="space-y-4">

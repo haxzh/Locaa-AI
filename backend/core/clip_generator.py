@@ -312,8 +312,25 @@ def generate_ai_clips(video_path, branding_config=None):
 
     segments = result["segments"]
 
-    # 3️⃣ AI highlights
-    highlights = get_highlight_segments(segments)
+    config = branding_config or {}
+
+    # 3️⃣ AI highlights based on requested summary depth.
+    summary_pref = str(config.get('summary_length', 'short')).strip().lower()
+    if summary_pref in ('detailed', 'long'):
+        min_len, max_len, merge_gap, max_clips = 15, 55, 1.4, 8
+    elif summary_pref in ('medium', 'standard'):
+        min_len, max_len, merge_gap, max_clips = 20, 40, 1.2, 6
+    else:
+        min_len, max_len, merge_gap, max_clips = 20, 32, 1.0, 4
+
+    highlights = get_highlight_segments(
+        segments,
+        min_len=min_len,
+        max_len=max_len,
+        merge_gap=merge_gap,
+    )
+    if len(highlights) > max_clips:
+        highlights = highlights[:max_clips]
 
     # 🔥 fallback: guaranteed clip
     if not highlights:
@@ -322,15 +339,18 @@ def generate_ai_clips(video_path, branding_config=None):
         highlights = [(0, end_time)]
 
     # 4️⃣ create raw clips
-    raw_clips = create_clips(video_path, highlights, CLIPS_DIR, branding_config=branding_config, base_name=base)
+    raw_clips = create_clips(video_path, highlights, CLIPS_DIR, branding_config=config, base_name=base)
 
     # 5️⃣ Convert to TikTok/Reels format (Vertical + Subs)
     try:
         from core.reel_generator import make_reel
         final_clips = []
+        aspect_ratio = config.get('aspect_ratio', '9:16')
+        overlay_style = config.get('text_style_primary', 'Modern')
+
         for rc in raw_clips:
             print(f"🎬 Enhancing raw clip into TikTok format: {rc}")
-            final = make_reel(rc, CLIPS_DIR)
+            final = make_reel(rc, CLIPS_DIR, aspect_ratio=aspect_ratio, overlay_style=overlay_style)
             if final and os.path.exists(final):
                 final_clips.append(final)
                 try:

@@ -15,7 +15,7 @@ numpy==1.26.4
 # Use CPU wheels for reliable production builds without massive CUDA downloads.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.2+cpu
-torchaudio==2.2.2+cpu
+torchaudio==2.2.2
 openai-whisper
 
 # ==================== GOOGLE APIs ====================

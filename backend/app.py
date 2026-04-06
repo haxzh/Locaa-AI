@@ -420,6 +420,9 @@ def process_video_background(job_id):
                             project_type='full_video'
                         ).first()
                         branding_config = branding_row.get_config() if branding_row else {}
+                        overrides = extra_config.get('branding_overrides') if isinstance(extra_config, dict) else {}
+                        if isinstance(overrides, dict):
+                            branding_config.update(overrides)
                         
                         dubbed_vid, thumb = process_dubbing_pipeline(
                             video_path=video_path,
@@ -530,6 +533,9 @@ def process_video_background(job_id):
                         project_type='clips'
                     ).first()
                     branding_config = branding_row.get_config() if branding_row else {}
+                    overrides = extra_config.get('branding_overrides') if isinstance(extra_config, dict) else {}
+                    if isinstance(overrides, dict):
+                        branding_config.update(overrides)
 
                     # Request-level logo_path should override saved branding when provided.
                     if job.logo_path:
@@ -698,6 +704,17 @@ def process_video():
         logo_path = data.get("logo_path")
         processing_type = data.get("processing_type", "clips")  # 'clips' or 'full_video'
         target_language = data.get("target_language") # Optional, for dubbing
+        branding_overrides_raw = data.get("branding_overrides")
+
+        branding_overrides = {}
+        if branding_overrides_raw:
+            if isinstance(branding_overrides_raw, str):
+                try:
+                    branding_overrides = json.loads(branding_overrides_raw)
+                except Exception:
+                    branding_overrides = {}
+            elif isinstance(branding_overrides_raw, dict):
+                branding_overrides = branding_overrides_raw
         
         if not youtube_url and not video_file:
             return jsonify({"error": "youtube_url or video_file is required"}), 400
@@ -740,6 +757,8 @@ def process_video():
             extra_config['target_language'] = target_language
         if publish_platforms:
             extra_config['publish_platforms'] = publish_platforms
+        if branding_overrides:
+            extra_config['branding_overrides'] = branding_overrides
         
         if extra_config:
             job.set_clips_data(extra_config)

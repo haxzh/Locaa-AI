@@ -18,7 +18,8 @@ import {
     FaSpinner,
     FaTrash,
     FaMagic,
-    FaPlay
+    FaPlay,
+    FaCrown
 } from 'react-icons/fa'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
@@ -41,6 +42,16 @@ function DashboardAdvanced() {
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [notifOpen, setNotifOpen] = useState(false)
+
+    const displayName = [user?.first_name, user?.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || user?.name || user?.username || user?.email?.split('@')[0] || 'User'
+
+    const tierRaw = (user?.subscription_tier || 'free').toString().trim()
+    const tierLabel = tierRaw
+        ? tierRaw.charAt(0).toUpperCase() + tierRaw.slice(1).toLowerCase()
+        : 'Free'
 
     const getReadableError = (error) => {
         const status = error?.response?.status
@@ -565,12 +576,14 @@ function DashboardAdvanced() {
                         <div className="flex items-center gap-3">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-semibold text-white leading-none mb-1">
-                                    {user?.name || user?.email?.split('@')[0] || 'User'}
+                                    {displayName}
                                 </p>
-                                <p className="text-xs text-primary-400 font-medium leading-none">Pro Plan</p>
+                                <p className="text-xs text-primary-400 font-medium leading-none flex items-center justify-end gap-1">
+                                    <FaCrown className="text-[10px]" /> {tierLabel}
+                                </p>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-primary-500/20 ring-2 ring-white/10">
-                                {user?.name?.[0] || 'A'}
+                                {displayName?.[0] || 'A'}
                             </div>
                             <button
                                 className="ml-2 text-dark-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-white/5"

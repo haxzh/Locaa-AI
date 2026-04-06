@@ -3,11 +3,12 @@ Publishing Routes for Locaa AI
 Multi-platform video publishing endpoints
 """
 import os
+import re
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from database.models import db, Job
+from database.models import db, Job, UserIntegration
 from utils.auth import get_current_user
 from utils.logger import log
 from core.multi_platform_publisher import MultiPlatformPublisher
@@ -19,24 +20,92 @@ publishing_bp = Blueprint('publishing', __name__, url_prefix='/api/publish')
 @jwt_required()
 def generate_metadata():
     """
-    Generate an AI Title, Description, and Tags for a video.
-    Body: { "topic": "Optional hint or context" }
+    Generate AI Title/Description/Tags from actual job context.
+    Body: {
+      "topic": "Optional hint",
+      "job_id": "Optional job id",
+      "current_title": "Optional",
+      "current_description": "Optional",
+      "target_platforms": ["youtube", "instagram"]
+    }
     """
     try:
         from openai import OpenAI
         import json
-        
+
+        def _clean_text(value, max_len=500):
+            if not value:
+                return ''
+            return str(value).strip()[:max_len]
+
+        def _fallback_tags(topic, platforms):
+            words = re.findall(r"[a-zA-Z0-9]+", (topic or '').lower())
+            words = [w for w in words if len(w) > 2][:3]
+            platform_tags = {
+                'youtube': ['shorts', 'youtube'],
+                'instagram': ['reels', 'instagram'],
+                'facebook': ['facebookvideo'],
+                'tiktok': ['fyp', 'tiktok']
+            }
+            tags = ['viral', 'trending', 'foryou', 'ai', *words]
+            for p in platforms or []:
+                tags.extend(platform_tags.get(p, []))
+            # Keep deterministic order and unique tags
+            deduped = []
+            seen = set()
+            for t in tags:
+                norm = t.strip().lower().replace('#', '')
+                if norm and norm not in seen:
+                    seen.add(norm)
+                    deduped.append(norm)
+            return deduped[:10]
+
         data = request.json or {}
-        topic_hint = data.get('topic', 'a short viral video')
-        
+        topic_hint = _clean_text(data.get('topic', 'a short viral video'), 200)
+        job_id = _clean_text(data.get('job_id', ''), 40)
+        target_platforms = data.get('target_platforms') or []
+        if not isinstance(target_platforms, list):
+            target_platforms = []
+
+        current_user = get_current_user()
+
+        job = None
+        if job_id:
+            job = Job.query.filter_by(id=job_id).first()
+
+        # Prefer job context if available to generate video-relevant metadata
+        source_title = _clean_text(data.get('current_title'))
+        source_description = _clean_text(data.get('current_description'))
+        if job:
+            source_title = source_title or _clean_text(job.title)
+            source_description = source_description or _clean_text(job.description)
+            if not topic_hint or topic_hint == 'a short viral video':
+                topic_hint = source_title or source_description[:120] or topic_hint
+            if not target_platforms and job.processing_type == 'clips':
+                target_platforms = ['youtube', 'instagram']
+
         # We need a system prompt that outputs JSON {"title": "", "description": "", "tags": []}
-        system_prompt = """You are an expert Social Media Manager. Generate highly engaging metadata for a video.
+        system_prompt = """You are an expert Social Media Manager for short-form video growth.
 Respond ONLY with a valid JSON object containing:
 - title: A catchy, click-worthy title (max 60 chars)
-- description: An engaging description with emojis
-- tags: Array of 5-8 relevant hashtags (without the #)
+- description: An engaging description that matches the actual video topic
+- tags: Array of 8-12 relevant viral hashtags (without #), specific to the video and platforms
+
+Rules:
+- Use the provided video context, not generic text.
+- Keep language natural and high-conversion.
+- Include niche + viral tags together.
+- Avoid repeating same tag in different forms.
 """
-        user_prompt = f"Please generate viral metadata for a video about: {topic_hint}"
+        user_prompt = (
+            "Generate metadata for this video context:\n"
+            f"Topic Hint: {topic_hint}\n"
+            f"Video Title Context: {source_title}\n"
+            f"Video Description Context: {source_description}\n"
+            f"Processing Type: {job.processing_type if job else 'unknown'}\n"
+            f"Target Platforms: {', '.join(target_platforms) if target_platforms else 'general'}\n"
+            f"Creator Tier: {current_user.subscription_tier if current_user else 'unknown'}\n"
+        )
         
         try:
             client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -50,16 +119,48 @@ Respond ONLY with a valid JSON object containing:
             )
             result_text = response.choices[0].message.content
             metadata = json.loads(result_text)
-            return jsonify({'success': True, 'metadata': metadata})
+
+            # Normalize output shape and ensure useful viral tags are present.
+            title = _clean_text(metadata.get('title', ''), 80)
+            description = _clean_text(metadata.get('description', ''), 1200)
+            tags = metadata.get('tags', [])
+            if isinstance(tags, str):
+                tags = [t.strip() for t in tags.split(',') if t.strip()]
+            if not isinstance(tags, list):
+                tags = []
+
+            normalized_tags = []
+            seen = set()
+            for tag in tags + _fallback_tags(topic_hint or source_title, target_platforms):
+                clean = str(tag).strip().lower().replace('#', '')
+                if clean and clean not in seen:
+                    seen.add(clean)
+                    normalized_tags.append(clean)
+
+            if len(normalized_tags) < 8:
+                normalized_tags.extend(_fallback_tags(topic_hint or source_title, target_platforms))
+                normalized_tags = list(dict.fromkeys(normalized_tags))
+
+            normalized_metadata = {
+                'title': title or f"🔥 {topic_hint[:54] or 'Must Watch Viral Clip'}",
+                'description': description or source_description or 'Watch till the end and share your favorite part in comments 👇',
+                'tags': normalized_tags[:12]
+            }
+
+            return jsonify({'success': True, 'metadata': normalized_metadata})
         except Exception as e:
             # Fallback if OpenAI key is invalid or fails
             log(f"OpenAI metadata generation failed: {e}. Using fallback generator.")
+            fallback_topic = source_title or topic_hint
             return jsonify({
                 'success': True,
                 'metadata': {
-                    'title': f"🔥 Awesome Video About {topic_hint[:20]}",
-                    'description': f"Check out this amazing video! Let me know what you think in the comments 👇\n\n#viral #trending #{topic_hint.replace(' ', '')[:10]}",
-                    'tags': ['viral', 'trending', 'foryou', 'ai']
+                    'title': f"🔥 {fallback_topic[:54] or 'Must Watch Viral Clip'}",
+                    'description': (
+                        f"{source_description[:220] or 'Watch this video till the end and tell your favorite moment in comments!'} "
+                        "👇\n\n#viral #trending #foryou"
+                    ),
+                    'tags': _fallback_tags(fallback_topic, target_platforms)
                 }
             })
             
@@ -82,13 +183,18 @@ def get_available_platforms():
         current_user = get_current_user()
         user_plan = current_user.subscription_tier
         
+        connected = {
+            row.provider
+            for row in UserIntegration.query.filter_by(user_id=current_user.id, is_connected=True).all()
+        }
+
         platforms = [
             {
                 'id': 'youtube',
                 'name': 'YouTube',
                 'icon': '📺',
                 'color': '#FF0000',
-                'enabled': bool(Config.YOUTUBE_API_KEY),
+                'enabled': 'youtube' in connected,
                 'available_in_plan': user_plan in ['free', 'pro', 'business']
             },
             {
@@ -96,7 +202,7 @@ def get_available_platforms():
                 'name': 'Instagram',
                 'icon': '📸',
                 'color': '#E1306C',
-                'enabled': bool(Config.INSTAGRAM_ACCESS_TOKEN),
+                'enabled': 'instagram' in connected,
                 'available_in_plan': user_plan in ['pro', 'business']
             },
             {
@@ -104,7 +210,7 @@ def get_available_platforms():
                 'name': 'Facebook',
                 'icon': '👥',
                 'color': '#1877F2',
-                'enabled': bool(Config.FACEBOOK_ACCESS_TOKEN),
+                'enabled': 'facebook' in connected,
                 'available_in_plan': user_plan in ['pro', 'business']
             },
             {
@@ -112,7 +218,7 @@ def get_available_platforms():
                 'name': 'TikTok',
                 'icon': '🎵',
                 'color': '#000000',
-                'enabled': bool(Config.TIKTOK_CLIENT_KEY),
+                'enabled': 'tiktok' in connected,
                 'available_in_plan': user_plan == 'business'
             }
         ]
